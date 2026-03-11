@@ -116,11 +116,12 @@ export function registerOneBotCli(onebot: any, api: any): void {
         console.error("--file 与 --name 必填");
         process.exit(1);
       }
+      const getConfig = () => getOneBotConfig(getApi());
       if (t.startsWith("group:")) {
-        await uploadGroupFile(parseInt(t.slice(6), 10), file, name);
+        await uploadGroupFile(parseInt(t.slice(6), 10), file, name, getConfig);
         console.log("群文件上传成功");
       } else if (t.startsWith("user:")) {
-        await uploadPrivateFile(parseInt(t.replace(/^user:/, ""), 10), file, name);
+        await uploadPrivateFile(parseInt(t.replace(/^user:/, ""), 10), file, name, getConfig);
         console.log("私聊文件上传成功");
       } else {
         console.error("--target 格式须为 group:<群号> 或 user:<QQ号>");

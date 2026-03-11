@@ -460,14 +460,34 @@ export async function sendPrivateImage(
     return mid;
 }
 
-export async function uploadGroupFile(groupId: number, file: string, name: string): Promise<void> {
-    if (!ws || ws.readyState !== WebSocket.OPEN) throw new Error("OneBot WebSocket not connected");
-    await sendOneBotAction(ws, "upload_group_file", { group_id: groupId, file, name });
+export async function uploadGroupFile(
+    groupId: number, 
+    file: string, 
+    name: string,
+    getConfig?: () => OneBotAccountConfig | null
+): Promise<void> {
+    const socket = getConfig 
+        ? await ensureConnection(getConfig) 
+        : await waitForConnection();
+    const res = await sendOneBotAction(socket, "upload_group_file", { group_id: groupId, file, name });
+    if (res?.retcode !== 0) {
+        throw new Error(res?.msg ?? `OneBot upload_group_file failed (retcode=${res?.retcode})`);
+    }
 }
 
-export async function uploadPrivateFile(userId: number, file: string, name: string): Promise<void> {
-    if (!ws || ws.readyState !== WebSocket.OPEN) throw new Error("OneBot WebSocket not connected");
-    await sendOneBotAction(ws, "upload_private_file", { user_id: userId, file, name });
+export async function uploadPrivateFile(
+    userId: number, 
+    file: string, 
+    name: string,
+    getConfig?: () => OneBotAccountConfig | null
+): Promise<void> {
+    const socket = getConfig 
+        ? await ensureConnection(getConfig) 
+        : await waitForConnection();
+    const res = await sendOneBotAction(socket, "upload_private_file", { user_id: userId, file, name });
+    if (res?.retcode !== 0) {
+        throw new Error(res?.msg ?? `OneBot upload_private_file failed (retcode=${res?.retcode})`);
+    }
 }
 
 /** 撤回消息 */
