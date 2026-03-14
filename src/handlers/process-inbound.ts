@@ -141,17 +141,19 @@ export async function processInboundMessage(api: any, msg: OneBotMessage): Promi
         return;
     }
     const groupId = msg.group_id;
-    const sessionId = isGroup
+    const tempSessionId = isGroup
         ? `onebot:group:${groupId}`.toLowerCase()
         : `onebot:${userId}`.toLowerCase();
 
     const route = runtime.channel.routing?.resolveAgentRoute?.({
         cfg,
-        sessionKey: sessionId,
+        sessionKey: tempSessionId,
         channel: "onebot",
         accountId: config.accountId ?? "default",
     }) ?? { agentId: "main" };
-
+    
+    // 修复构造符合 OpenClaw 规范的全局 SessionKey格式必须为 agent:{agentId}:{channel}:{type}:{id}，否则下方的dispatchReplyWithBufferedBlockDispatcher会触发自动兜底机制，直接在 main 代理下“克隆”出一个一模一样的会话，导致多agent配置达不到效果
+    const sessionId = `agent:${route.agentId}:${tempSessionId}`;
     const storePath =
         runtime.channel.session?.resolveStorePath?.(cfg?.session?.store, {
             agentId: route.agentId,
