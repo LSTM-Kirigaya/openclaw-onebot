@@ -736,11 +736,16 @@ export async function getGroupMsgHistoryInRange(
 export async function connectForward(config: OneBotAccountConfig): Promise<WebSocket> {
     const path = config.path ?? "/onebot/v11/ws";
     const pathNorm = path.startsWith("/") ? path : `/${path}`;
-    const addr = `ws://${config.host}:${config.port}${pathNorm}`;
+
+    // 端口为 443 时使用 wss，其余端口使用 ws
+    const scheme = config.port === 443 ? "wss" : "ws";
+    const addr = `${scheme}://${config.host}:${config.port}${pathNorm}`;
+
     const headers: Record<string, string> = {};
     if (config.accessToken) {
         headers["Authorization"] = `Bearer ${config.accessToken}`;
     }
+
     const w = new WebSocket(addr, { headers });
     await new Promise<void>((resolve, reject) => {
         w.on("open", () => resolve());
