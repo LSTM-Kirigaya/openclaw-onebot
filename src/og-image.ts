@@ -36,7 +36,11 @@ export async function markdownToImage(md: string, opts?: { theme?: string }): Pr
       html: fullHtml,
       type: "png",
       quality: 90,
-      puppeteerArgs: { headless: true, args: ["--no-sandbox", "--disable-setuid-sandbox"] },
+      puppeteerArgs: {
+        headless: true,
+        args: ["--no-sandbox", "--disable-setuid-sandbox"],
+        executablePath: process.env.PUPPETEER_EXECUTABLE_PATH || "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome",
+      },
     });
     return `file://${outPath.replace(/\\/g, "/")}`;
   } catch (e) {

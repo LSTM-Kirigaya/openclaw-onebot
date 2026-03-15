@@ -275,6 +275,7 @@ export async function processInboundMessage(api: any, msg: OneBotMessage): Promi
 
     const longMessageMode = (onebotCfg.longMessageMode as "normal" | "og_image" | "forward") ?? "normal";
     const longMessageThreshold = (onebotCfg.longMessageThreshold as number) ?? 300;
+    api.logger?.info?.(`[onebot] longMessageMode=${longMessageMode}, threshold=${longMessageThreshold}`);
     const normalModeFlushIntervalMs = getNormalModeFlushIntervalMs(cfg);
     const normalModeFlushChars = getNormalModeFlushChars(cfg);
 
@@ -465,6 +466,7 @@ export async function processInboundMessage(api: any, msg: OneBotMessage): Promi
                             const isLong = totalLen > longMessageThreshold;
                             const isIncrementalLong = incrementalLen > longMessageThreshold;
                             const isIncremental = lastSentCount > 0;
+                            api.logger?.info?.(`[onebot] final check: totalLen=${totalLen}, threshold=${longMessageThreshold}, isLong=${isLong}, isIncremental=${isIncremental}, deliveredChunks=${deliveredChunks.length}`);
 
                             if (isIncremental) {
                                 setForwardSuppressDelivery(false);
@@ -528,7 +530,9 @@ export async function processInboundMessage(api: any, msg: OneBotMessage): Promi
                                     }
                                 }
                             } else if (!shouldSendNow && (longMessageMode === "og_image" || longMessageMode === "forward")) {
+                                api.logger?.info?.(`[onebot] checking og_image: isLong=${isLong}, mode=${longMessageMode}`);
                                 if (isLong && longMessageMode === "og_image") {
+                                    api.logger?.info?.(`[onebot] triggering og_image for ${totalLen} chars`);
                                     const fullRaw = deliveredChunks.map((c) => c.rawText ?? c.text ?? "").join("\n\n");
                                     if (fullRaw.trim()) {
                                         try {

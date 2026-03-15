@@ -1,9 +1,11 @@
 {
   "name": "@kirigaya/openclaw-onebot",
-  "version": "1.0.3",
+  "version": "1.0.5",
   "description": "OneBot v11 protocol channel plugin for OpenClaw (QQ/Lagrange.Core/go-cqhttp)",
   "license": "MIT",
-  "publishConfig": { "access": "public" },
+  "publishConfig": {
+    "access": "public"
+  },
   "author": "LSTM-Kirigaya",
   "repository": {
     "type": "git",
@@ -32,8 +34,13 @@
     "README.md"
   ],
   "openclaw": {
-    "extensions": ["./dist/index.js"],
-    "skills": ["skills/onebot-ops", "skills/onebot-scripts"],
+    "extensions": [
+      "./dist/index.js"
+    ],
+    "skills": [
+      "skills/onebot-ops",
+      "skills/onebot-scripts"
+    ],
     "channel": {
       "id": "onebot",
       "label": "OneBot",
@@ -41,10 +48,15 @@
       "docsPath": "/channels/onebot",
       "blurb": "OneBot v11 protocol via WebSocket (go-cqhttp, Lagrange.Core, etc.)",
       "order": 85,
-      "aliases": ["qq", "lagrange", "cqhttp"]
+      "aliases": [
+        "qq",
+        "lagrange",
+        "cqhttp"
+      ]
     }
   },
   "scripts": {
+    "openclaw": "openclaw",
     "build": "tsc",
     "test:connect": "npx tsx scripts/test-connect.ts",
     "test:group-welcome": "npx tsx scripts/test-group-welcome.ts",
@@ -54,29 +66,32 @@
     "pub": "npm run build && npm publish"
   },
   "dependencies": {
-    "fuse.js": "^7.1.0",
-    "ws": "^8.17.0",
     "@clack/prompts": "^1.0.0",
-    "tsx": "^4.0.0",
     "cron": "^4.4.0",
+    "fuse.js": "^7.1.0",
+    "highlight.js": "^11.10.0",
     "marked": "^15.0.0",
-    "highlight.js": "^11.10.0"
+    "tsx": "^4.0.0",
+    "ws": "^8.17.0"
   },
   "optionalDependencies": {
     "node-html-to-image": "^3.0.0"
   },
   "peerDependencies": {
-    "openclaw": "*",
     "clawdbot": "*"
   },
   "peerDependenciesMeta": {
-    "clawdbot": { "optional": true },
-    "openclaw": { "optional": true }
+    "clawdbot": {
+      "optional": true
+    },
+    "openclaw": {
+      "optional": true
+    }
   },
   "devDependencies": {
-    "typescript": "^5.4.0",
     "@types/node": "^22.0.0",
-    "@types/ws": "^8.5.10"
+    "@types/ws": "^8.5.10",
+    "typescript": "^5.4.0"
   },
   "engines": {
     "node": ">=22"
