@@ -1,6 +1,6 @@
 {
   "name": "@kirigaya/openclaw-onebot",
-  "version": "1.0.5",
+  "version": "1.0.6",
   "description": "OneBot v11 protocol channel plugin for OpenClaw (QQ/Lagrange.Core/go-cqhttp)",
   "license": "MIT",
   "publishConfig": {

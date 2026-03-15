@@ -14,10 +14,26 @@ import { registerService } from "./service.js";
 import { startImageTempCleanup } from "./connection.js";
 import { startForwardCleanupTimer } from "./handlers/process-inbound.js";
 import { registerOneBotCli } from "./cli-commands.js";
+import { createRequire } from "module";
+
+const require = createRequire(import.meta.url);
+const pkg = require("../package.json");
 
 export default function register(api: any): void {
   (globalThis as any).__onebotApi = api;
   (globalThis as any).__onebotGatewayConfig = api.config;
+
+  // 打印插件加载信息
+  const pluginName = pkg.name;
+  const pluginVersion = pkg.version;
+  const logger = api.logger;
+  if (logger?.info) {
+    logger.info(`[${pluginName}] v${pluginVersion} 加载中...`);
+    logger.info(`[${pluginName}] OneBot v11 协议渠道插件`);
+  } else {
+    console.log(`[${pluginName}] v${pluginVersion} 加载中...`);
+    console.log(`[${pluginName}] OneBot v11 协议渠道插件`);
+  }
 
   startImageTempCleanup();
   startForwardCleanupTimer();
@@ -42,5 +58,9 @@ export default function register(api: any): void {
 
   registerService(api);
 
-  api.logger?.info?.("[onebot] plugin loaded");
+  if (logger?.info) {
+    logger.info(`[${pluginName}] v${pluginVersion} 加载完成`);
+  } else {
+    console.log(`[${pluginName}] v${pluginVersion} 加载完成`);
+  }
 }
