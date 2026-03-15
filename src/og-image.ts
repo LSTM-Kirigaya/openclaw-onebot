@@ -330,7 +330,57 @@ function parseInlineStyles(text: string): any[] {
 export interface MarkdownToImageOptions {
   theme?: string;
   width?: number;
-  height?: number;
+}
+
+/**
+ * 根据文本内容估算所需高度
+ */
+function estimateHeight(md: string, width: number): number {
+  const lines = md.split("\n");
+  const contentWidth = width - 64; // 减去 padding
+  const avgCharsPerLine = contentWidth / 14; // 假设平均每个字符 14px
+  
+  let estimatedLines = 0;
+  let inCodeBlock = false;
+  
+  for (const line of lines) {
+    if (line.startsWith("```")) {
+      inCodeBlock = !inCodeBlock;
+      if (!inCodeBlock) {
+        estimatedLines += 1; // 代码块结束行
+      }
+      continue;
+    }
+    
+    if (inCodeBlock) {
+      estimatedLines += 1;
+      continue;
+    }
+    
+    if (line.startsWith("# ")) {
+      estimatedLines += 2; // h1 + margin
+    } else if (line.startsWith("## ")) {
+      estimatedLines += 1.5; // h2 + margin
+    } else if (line.startsWith("### ")) {
+      estimatedLines += 1.5; // h3 + margin
+    } else if (line.startsWith("> ")) {
+      estimatedLines += Math.max(1, Math.ceil(line.length / avgCharsPerLine));
+    } else if (line.startsWith("- ") || line.startsWith("* ")) {
+      estimatedLines += Math.max(1, Math.ceil(line.length / avgCharsPerLine));
+    } else if (line.trim() === "") {
+      estimatedLines += 0.5; // 空行
+    } else {
+      estimatedLines += Math.max(1, Math.ceil(line.length / avgCharsPerLine));
+    }
+  }
+  
+  // 每行大约 22px 高度，加上 padding
+  const lineHeight = 22;
+  const padding = 64;
+  const minHeight = 200;
+  const maxHeight = 4000; // 最大高度限制
+  
+  return Math.min(maxHeight, Math.max(minHeight, Math.ceil(estimatedLines * lineHeight) + padding));
 }
 
 export async function markdownToImage(
@@ -346,6 +396,10 @@ export async function markdownToImage(
     // 转换 Markdown 为 Satori 元素
     const elements = markdownToSatoriElements(md);
     
+    // 计算所需高度
+    const width = opts?.width || 800;
+    const estimatedHeight = estimateHeight(md, width);
+    
     // 创建容器
     const container = {
       type: "div",
@@ -355,18 +409,17 @@ export async function markdownToImage(
           flexDirection: "column",
           padding: 32,
           backgroundColor: opts?.theme === "dust" ? "#faf8f5" : "#ffffff",
-          width: opts?.width || 800,
-          height: opts?.height || 600,
+          width: width,
+          height: estimatedHeight,
         },
         children: elements,
       },
     };
     
     // 使用 Satori 生成 SVG
-    const width = opts?.width || 800;
     const svg = await satori(container, {
       width,
-      height: opts?.height || 600,
+      height: estimatedHeight,
       fonts: [
         {
           name: "System",
