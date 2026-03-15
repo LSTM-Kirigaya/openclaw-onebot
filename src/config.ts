@@ -122,3 +122,24 @@ export function listAccountIds(apiOrCfg: any): string[] {
   if (cfg?.channels?.onebot?.host) return ["default"];
   return [];
 }
+
+/** 
+ * 触发关键词列表，当 requireMention 为 false 时生效
+ * 消息包含这些关键词时触发机器人响应
+ */
+export function getTriggerKeywords(cfg: any): string[] {
+  const v = cfg?.channels?.onebot?.triggerKeywords;
+  if (!Array.isArray(v)) return [];
+  return v.filter((x: unknown) => typeof x === "string" && x.trim().length > 0).map((x) => x.trim());
+}
+
+/**
+ * 关键词匹配模式
+ * - "prefix": 消息以关键词开头（默认）
+ * - "contains": 消息包含关键词即可
+ */
+export function getTriggerMode(cfg: any): "prefix" | "contains" {
+  const v = cfg?.channels?.onebot?.triggerMode;
+  if (v === "contains") return "contains";
+  return "prefix"; // 默认为前缀匹配
+}

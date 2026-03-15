@@ -360,7 +360,8 @@ body {
     white-space: normal;
 }
 
-/* 代码块阴影效果 */
+/* 代码块阴影效果 - OG图片模式下禁用，避免截图显示不完整 */
+/*
 .markdown pre:after,
 .markdown pre:before {
     content: '';
@@ -381,6 +382,7 @@ body {
     left: auto;
     transform: rotate(2deg);
 }
+*/
 
 /* ==================== 代码工具箱样式 ==================== */
 .code-toolbox {

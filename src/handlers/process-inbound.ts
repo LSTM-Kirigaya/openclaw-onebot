@@ -19,6 +19,8 @@ import {
     getOgImageRenderTheme,
     getNormalModeFlushIntervalMs,
     getNormalModeFlushChars,
+    getTriggerKeywords,
+    getTriggerMode,
 } from "../config.js";
 import { markdownToPlain, collapseDoubleNewlines } from "../markdown.js";
 import { markdownToImage } from "../og-image.js";
@@ -38,6 +40,34 @@ import { handleGroupIncrease } from "./group-increase.js";
 
 const DEFAULT_HISTORY_LIMIT = 20;
 export const sessionHistories = new Map<string, Array<{ sender: string; body: string; timestamp: number; messageId: string }>>();
+
+/**
+ * 检查消息是否匹配触发关键词
+ * @param text 消息文本
+ * @param keywords 关键词列表
+ * @param mode 匹配模式：prefix-前缀匹配，contains-包含匹配
+ */
+function checkTriggerKeyword(text: string, keywords: string[], mode: "prefix" | "contains"): boolean {
+    if (!text || keywords.length === 0) return false;
+    
+    for (const keyword of keywords) {
+        if (!keyword) continue;
+        
+        if (mode === "prefix") {
+            // 前缀匹配：消息以关键词开头（忽略前导空格）
+            const trimmedText = text.trimStart();
+            if (trimmedText.toLowerCase().startsWith(keyword.toLowerCase())) {
+                return true;
+            }
+        } else {
+            // 包含匹配：消息中包含关键词即可
+            if (text.toLowerCase().includes(keyword.toLowerCase())) {
+                return true;
+            }
+        }
+    }
+    return false;
+}
 
 /** forward 模式下待处理的会话，用于定期清理未完成的缓冲 */
 const forwardPendingSessions = new Map<string, number>();
@@ -108,9 +138,32 @@ export async function processInboundMessage(api: any, msg: OneBotMessage): Promi
     const cfg = api.config;
     const requireMention = (cfg?.channels?.onebot as any)?.requireMention ?? true;
 
-    if (isGroup && requireMention && !isMentioned(msg, selfId)) {
-        api.logger?.info?.(`[onebot] ignoring group message without @mention`);
-        return;
+    // 触发检查逻辑
+    if (isGroup) {
+        const isAtMentioned = isMentioned(msg, selfId);
+        
+        if (requireMention) {
+            // 传统模式：必须 @ 才响应
+            if (!isAtMentioned) {
+                api.logger?.info?.(`[onebot] ignoring group message without @mention`);
+                return;
+            }
+        } else {
+            // 关键词模式：配置 triggerKeywords 时，需匹配关键词才响应
+            const triggerKeywords = getTriggerKeywords(cfg);
+            if (triggerKeywords.length > 0) {
+                const triggerMode = getTriggerMode(cfg);
+                const textFromMsg = getTextFromSegments(msg).trim() || messageText.trim();
+                const matched = checkTriggerKeyword(textFromMsg, triggerKeywords, triggerMode);
+                
+                if (!matched) {
+                    api.logger?.info?.(`[onebot] ignoring group message, no trigger keyword matched`);
+                    return;
+                }
+                api.logger?.info?.(`[onebot] trigger keyword matched, processing message`);
+            }
+            // 如果没有配置关键词，则所有消息都响应（降级到原逻辑）
+        }
     }
 
     const gi = (cfg?.channels?.onebot as Record<string, unknown>)?.groupIncrease as Record<string, unknown> | undefined;
@@ -172,6 +225,9 @@ export async function processInboundMessage(api: any, msg: OneBotMessage): Promi
     const envelopeOptions = runtime.channel.reply?.resolveEnvelopeFormatOptions?.(cfg) ?? {};
     const chatType = isGroup ? "group" : "direct";
     const fromLabel = String(userId);
+
+    // 添加日志：打印插件接收到的原始消息内容
+    api.logger?.info?.(`[onebot] received message from user ${userId}: "${messageText}"`);
 
     const formattedBody =
         runtime.channel.reply?.formatInboundEnvelope?.({
