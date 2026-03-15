@@ -17,7 +17,7 @@ function getDustThemePath(): string {
 }
 
 const HIGHLIGHT_CSS = `
-.hljs{display:block;overflow-x:auto;padding:1em;background:#1e1e1e;color:#d4d4d4;border-radius:6px;font-family:Consolas,Monaco,monospace;font-size:13px;line-height:1.5}
+.hljs{display:block;overflow-x:auto;padding:1em;background:#1e1e1e;color:#d4d4d4;border-radius:6px;font-family:Consolas,Monaco,monospace;font-size:15px;line-height:1.5}
 .hljs-keyword{color:#569cd6}
 .hljs-string{color:#ce9178}
 .hljs-number{color:#b5cea8}
@@ -59,7 +59,7 @@ marked.use({
 const WRAPPER_STYLE = `
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
-body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;font-size:15px;line-height:1.6;color:#24292e;background:#fff;padding:24px;max-width:800px}
+body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;font-size:18px;line-height:1.6;color:#24292e;background:#fff;padding:24px;max-width:450px}
 h1,h2,h3,h4,h5,h6{margin:16px 0 8px;font-weight:600;line-height:1.25}
 h1{font-size:1.5em}
 h2{font-size:1.3em}
@@ -97,7 +97,7 @@ export function getMarkdownStyles(theme?: string): string {
     try {
       if (existsSync(dustPath)) {
         const dustCss = readFileSync(dustPath, "utf-8");
-        extra = `<style>body{background:var(--background) !important;padding:24px;max-width:800px;}${dustCss}</style>`;
+        extra = `<style>body{background:var(--background) !important;padding:24px;max-width:450px;}${dustCss}</style>`;
       }
     } catch {
       /* ignore */
