@@ -143,3 +143,9 @@ export function getTriggerMode(cfg: any): "prefix" | "contains" {
   if (v === "contains") return "contains";
   return "prefix"; // 默认为前缀匹配
 }
+
+/** 是否在用户不在白名单时回复“权限不足”，默认 true */
+export function getReplyWhenWhitelistDenied(cfg: any): boolean {
+  const v = cfg?.channels?.onebot?.replyWhenWhitelistDenied;
+  return v === undefined ? true : Boolean(v);
+}

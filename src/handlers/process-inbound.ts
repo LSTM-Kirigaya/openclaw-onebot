@@ -21,6 +21,7 @@ import {
     getNormalModeFlushChars,
     getTriggerKeywords,
     getTriggerMode,
+    getReplyWhenWhitelistDenied,
 } from "../config.js";
 import { markdownToPlain, collapseDoubleNewlines } from "../markdown.js";
 import { markdownToImage } from "../og-image.js";
@@ -49,10 +50,10 @@ export const sessionHistories = new Map<string, Array<{ sender: string; body: st
  */
 function checkTriggerKeyword(text: string, keywords: string[], mode: "prefix" | "contains"): boolean {
     if (!text || keywords.length === 0) return false;
-    
+
     for (const keyword of keywords) {
         if (!keyword) continue;
-        
+
         if (mode === "prefix") {
             // 前缀匹配：消息以关键词开头（忽略前导空格）
             const trimmedText = text.trimStart();
@@ -141,7 +142,7 @@ export async function processInboundMessage(api: any, msg: OneBotMessage): Promi
     // 触发检查逻辑
     if (isGroup) {
         const isAtMentioned = isMentioned(msg, selfId);
-        
+
         if (requireMention) {
             // 传统模式：必须 @ 才响应
             if (!isAtMentioned) {
@@ -155,7 +156,7 @@ export async function processInboundMessage(api: any, msg: OneBotMessage): Promi
                 const triggerMode = getTriggerMode(cfg);
                 const textFromMsg = getTextFromSegments(msg).trim() || messageText.trim();
                 const matched = checkTriggerKeyword(textFromMsg, triggerKeywords, triggerMode);
-                
+
                 if (!matched) {
                     api.logger?.info?.(`[onebot] ignoring group message, no trigger keyword matched`);
                     return;
@@ -183,20 +184,22 @@ export async function processInboundMessage(api: any, msg: OneBotMessage): Promi
     }
 
     const userId = msg.user_id!;
-    
+
     // 白名单检查
     const whitelist = getWhitelistUserIds(cfg);
     if (whitelist.length > 0 && !whitelist.includes(Number(userId))) {
-        const denyMsg = "权限不足，请向管理员申请权限";
-        const getConfig = () => getOneBotConfig(api);
-        try {
-            if (msg.message_type === "group" && msg.group_id) await sendGroupMsg(msg.group_id, denyMsg, getConfig);
-            else await sendPrivateMsg(userId, denyMsg, getConfig);
-        } catch (_) {}
+        if (getReplyWhenWhitelistDenied(cfg)) {
+            const denyMsg = "权限不足，请向管理员申请权限";
+            const getConfig = () => getOneBotConfig(api);
+            try {
+                if (msg.message_type === "group" && msg.group_id) await sendGroupMsg(msg.group_id, denyMsg, getConfig);
+                else await sendPrivateMsg(userId, denyMsg, getConfig);
+            } catch (_) { }
+        }
         api.logger?.info?.(`[onebot] user ${userId} not in whitelist, denied`);
         return;
     }
-    
+
     // 黑名单检查
     const blacklist = getBlacklistUserIds(cfg);
     if (blacklist.length > 0 && blacklist.includes(Number(userId))) {
@@ -214,7 +217,7 @@ export async function processInboundMessage(api: any, msg: OneBotMessage): Promi
         channel: "onebot",
         accountId: config.accountId ?? "default",
     }) ?? { agentId: "main" };
-    
+
     // 修复构造符合 OpenClaw 规范的全局 SessionKey格式必须为 agent:{agentId}:{channel}:{type}:{id}，否则下方的dispatchReplyWithBufferedBlockDispatcher会触发自动兜底机制，直接在 main 代理下“克隆”出一个一模一样的会话，导致多agent配置达不到效果
     const sessionId = `agent:${route.agentId}:${tempSessionId}`;
     const storePath =
