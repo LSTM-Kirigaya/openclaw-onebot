@@ -697,6 +697,9 @@ export async function processInboundMessage(api: any, msg: OneBotMessage): Promi
         });
     } catch (err: any) {
         await clearEmojiReaction();
+        // 异常时清空缓冲，避免 finally 补发半截正文后再发错误消息
+        normalModeBufferedText = "";
+        normalModeBufferedRawText = "";
         api.logger?.error?.(`[onebot] dispatch failed: ${err?.message}`);
         try {
             const { userId: uid, groupId: gid, isGroup: ig } = (ctxPayload as any)._onebot || {};
@@ -704,6 +707,20 @@ export async function processInboundMessage(api: any, msg: OneBotMessage): Promi
             else if (uid) await sendPrivateMsg(uid, `处理失败: ${err?.message?.slice(0, 80) || "未知错误"}`);
         } catch (_) { }
     } finally {
+        // 补发缓冲池中残留的文本（引擎未发送 final 帧时会走到这里）
+        if (hasBufferedNormalModeText()) {
+            try {
+                const { userId: uid, groupId: gid, isGroup: ig } = (ctxPayload as any)._onebot || {};
+                const sessionKey = String((ctxPayload as any).SessionKey ?? sessionId);
+                const groupMatch = sessionKey.match(/^onebot:group:(\d+)$/i);
+                const effectiveIsGroup = groupMatch != null || Boolean(ig);
+                const effectiveGroupId = (groupMatch ? parseInt(groupMatch[1], 10) : undefined) ?? gid;
+                queueNormalModeFlush(() => flushBufferedNormalModeText(effectiveIsGroup, effectiveGroupId, uid));
+                await normalModeFlushChain;
+            } catch (e: any) {
+                api.logger?.error?.(`[onebot] finally flush failed: ${e?.message ?? e}`);
+            }
+        }
         clearNormalModeFlushTimer();
         setForwardSuppressDelivery(false);
         setActiveReplySelfId(null);
