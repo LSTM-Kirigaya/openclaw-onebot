@@ -201,18 +201,23 @@ function sendOneBotAction(wsocket: WebSocket, action: string, params: Record<str
     const echo = nextEcho();
     const payload = { action, params, echo };
 
+    // Log the initiation of the action with basic target info
+    const targetInfo = params.group_id ? `group=${params.group_id}` : (params.user_id ? `user=${params.user_id}` : "");
+    log.info?.(`[onebot-trace] sendOneBotAction action=${action} echo=${echo} ${targetInfo}`);
+
     return new Promise((resolve, reject) => {
         const timeout = setTimeout(() => {
             pendingEcho.delete(echo);
-            log.warn?.(`[onebot] sendOneBotAction ${action} timeout`);
-            reject(new Error(`OneBot action ${action} timeout`));
+            log.warn?.(`[onebot-trace] sendOneBotAction ${action} timeout for echo=${echo}, ws.readyState=${wsocket.readyState}`);
+            reject(new Error(`OneBot action ${action} timeout (echo=${echo}, ws.readyState=${wsocket.readyState})`));
         }, 15000);
 
         pendingEcho.set(echo, {
             resolve: (v) => {
                 clearTimeout(timeout);
                 pendingEcho.delete(echo);
-                if (v?.retcode !== 0) log.warn?.(`[onebot] sendOneBotAction ${action} retcode=${v?.retcode} msg=${v?.msg ?? ""}`);
+                log.info?.(`[onebot-trace] echo ${echo} resolved with retcode=${v?.retcode} message_id=${v?.data?.message_id ?? "unknown"}`);
+                if (v?.retcode !== 0) log.warn?.(`[onebot-trace] sendOneBotAction ${action} retcode=${v?.retcode} msg=${v?.msg ?? ""}`);
                 resolve(v);
             },
         });
@@ -221,6 +226,7 @@ function sendOneBotAction(wsocket: WebSocket, action: string, params: Record<str
             if (err) {
                 pendingEcho.delete(echo);
                 clearTimeout(timeout);
+                log.warn?.(`[onebot-trace] sendOneBotAction ${action} wsocket.send error for echo=${echo}: ${err.message}`);
                 reject(err);
             }
         });
@@ -461,13 +467,13 @@ export async function sendPrivateImage(
 }
 
 export async function uploadGroupFile(
-    groupId: number, 
-    file: string, 
+    groupId: number,
+    file: string,
     name: string,
     getConfig?: () => OneBotAccountConfig | null
 ): Promise<void> {
-    const socket = getConfig 
-        ? await ensureConnection(getConfig) 
+    const socket = getConfig
+        ? await ensureConnection(getConfig)
         : await waitForConnection();
     const res = await sendOneBotAction(socket, "upload_group_file", { group_id: groupId, file, name });
     if (res?.retcode !== 0) {
@@ -476,13 +482,13 @@ export async function uploadGroupFile(
 }
 
 export async function uploadPrivateFile(
-    userId: number, 
-    file: string, 
+    userId: number,
+    file: string,
     name: string,
     getConfig?: () => OneBotAccountConfig | null
 ): Promise<void> {
-    const socket = getConfig 
-        ? await ensureConnection(getConfig) 
+    const socket = getConfig
+        ? await ensureConnection(getConfig)
         : await waitForConnection();
     const res = await sendOneBotAction(socket, "upload_private_file", { user_id: userId, file, name });
     if (res?.retcode !== 0) {

@@ -346,11 +346,18 @@ export async function processInboundMessage(api: any, msg: OneBotMessage): Promi
         }
     }
 
-    api.logger?.info?.(`[onebot] dispatching message for session ${sessionId}`);
+    const traceId = `trace-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
+    const traceLog = {
+        info: (m: string) => api.logger?.info?.(`[${traceId}] ${m}`),
+        warn: (m: string) => api.logger?.warn?.(`[${traceId}] ${m}`),
+        error: (m: string) => api.logger?.error?.(`[${traceId}] ${m}`)
+    };
+
+    traceLog.info(`dispatching message for session ${sessionId}`);
 
     const longMessageMode = (onebotCfg.longMessageMode as "normal" | "og_image" | "forward") ?? "normal";
     const longMessageThreshold = (onebotCfg.longMessageThreshold as number) ?? 300;
-    api.logger?.info?.(`[onebot] longMessageMode=${longMessageMode}, threshold=${longMessageThreshold}`);
+    traceLog.info(`longMessageMode=${longMessageMode}, threshold=${longMessageThreshold}`);
     const normalModeFlushIntervalMs = getNormalModeFlushIntervalMs(cfg);
     const normalModeFlushChars = getNormalModeFlushChars(cfg);
 
@@ -366,14 +373,16 @@ export async function processInboundMessage(api: any, msg: OneBotMessage): Promi
     let normalModeBufferedRawText = "";
     let normalModeFlushTimer: ReturnType<typeof setTimeout> | null = null;
     let normalModeFlushChain: Promise<void> = Promise.resolve();
+    let receivedFinal = false;
 
     const getConfig = () => getOneBotConfig(api);
 
     const onReplySessionEnd = onebotCfg.onReplySessionEnd as string | ((ctx: ReplySessionContext) => void | Promise<void>) | undefined;
     const normalModePunctuationFlushMinChars = 24;
 
-    const clearNormalModeFlushTimer = () => {
+    const clearNormalModeFlushTimer = (reason: string = "unknown") => {
         if (normalModeFlushTimer) {
+            traceLog.info(`clearNormalModeFlushTimer: clearing timer, reason=${reason}`);
             clearTimeout(normalModeFlushTimer);
             normalModeFlushTimer = null;
         }
@@ -385,7 +394,7 @@ export async function processInboundMessage(api: any, msg: OneBotMessage): Promi
         normalModeFlushChain = normalModeFlushChain
             .then(action)
             .catch((e: any) => {
-                api.logger?.error?.(`[onebot] normal-mode flush failed: ${e?.message ?? e}`);
+                traceLog.error(`normal-mode flush failed: ${e?.message ?? e}`);
             });
         return normalModeFlushChain;
     };
@@ -412,11 +421,12 @@ export async function processInboundMessage(api: any, msg: OneBotMessage): Promi
         effectiveGroupId: number | undefined,
         uid: number | undefined
     ): Promise<void> => {
-        clearNormalModeFlushTimer();
+        clearNormalModeFlushTimer("flushBufferedNormalModeText");
         if (!hasBufferedNormalModeText()) return;
 
         const text = normalModeBufferedText;
         const rawText = normalModeBufferedRawText;
+        traceLog.info(`flushBufferedNormalModeText: textLen=${text.length}, textPreview="${text.slice(0, 30).replace(/\n/g, '\\n')}"`);
         normalModeBufferedText = "";
         normalModeBufferedRawText = "";
 
@@ -434,7 +444,9 @@ export async function processInboundMessage(api: any, msg: OneBotMessage): Promi
         uid: number | undefined
     ) => {
         if (normalModeFlushTimer) return;
+        traceLog.info(`scheduleNormalModeFlush: scheduled (interval=${normalModeFlushIntervalMs}ms)`);
         normalModeFlushTimer = setTimeout(() => {
+            traceLog.info(`scheduleNormalModeFlush: timer triggered`);
             void queueNormalModeFlush(() => flushBufferedNormalModeText(effectiveIsGroup, effectiveGroupId, uid));
         }, normalModeFlushIntervalMs);
     };
@@ -471,6 +483,13 @@ export async function processInboundMessage(api: any, msg: OneBotMessage): Promi
                     const replyText = typeof p === "string" ? p : (p?.text ?? p?.body ?? "");
                     const mediaUrl = typeof p === "string" ? undefined : (p?.mediaUrl ?? p?.mediaUrls?.[0]);
                     const trimmed = (replyText || "").trim();
+
+                    traceLog.info(`deliver entry: kind=${info.kind}, textLen=${replyText.length}, mediaUrl=${!!mediaUrl}, deliveredChunks=${deliveredChunks.length}`);
+
+                    if (info.kind === "final") {
+                        receivedFinal = true;
+                    }
+
                     if ((!trimmed || trimmed === "NO_REPLY" || trimmed.endsWith("NO_REPLY")) && !mediaUrl) return;
 
                     const { userId: uid, groupId: gid, isGroup: ig } = (ctxPayload as any)._onebot || {};
@@ -541,7 +560,7 @@ export async function processInboundMessage(api: any, msg: OneBotMessage): Promi
                             const isLong = totalLen > longMessageThreshold;
                             const isIncrementalLong = incrementalLen > longMessageThreshold;
                             const isIncremental = lastSentCount > 0;
-                            api.logger?.info?.(`[onebot] final check: totalLen=${totalLen}, threshold=${longMessageThreshold}, isLong=${isLong}, isIncremental=${isIncremental}, deliveredChunks=${deliveredChunks.length}`);
+                            traceLog.info(`final check: totalLen=${totalLen}, threshold=${longMessageThreshold}, isLong=${isLong}, isIncremental=${isIncremental}, deliveredChunks=${deliveredChunks.length}`);
 
                             if (isIncremental) {
                                 setForwardSuppressDelivery(false);
@@ -605,9 +624,9 @@ export async function processInboundMessage(api: any, msg: OneBotMessage): Promi
                                     }
                                 }
                             } else if (!shouldSendNow && (longMessageMode === "og_image" || longMessageMode === "forward")) {
-                                api.logger?.info?.(`[onebot] checking og_image: isLong=${isLong}, mode=${longMessageMode}`);
+                                traceLog.info(`checking og_image: isLong=${isLong}, mode=${longMessageMode}`);
                                 if (isLong && longMessageMode === "og_image") {
-                                    api.logger?.info?.(`[onebot] triggering og_image for ${totalLen} chars`);
+                                    traceLog.info(`triggering og_image for ${totalLen} chars`);
                                     const fullRaw = deliveredChunks.map((c) => c.rawText ?? c.text ?? "").join("\n\n");
                                     if (fullRaw.trim()) {
                                         try {
@@ -689,28 +708,30 @@ export async function processInboundMessage(api: any, msg: OneBotMessage): Promi
                             }
                         }
                     } catch (e: any) {
-                        api.logger?.error?.(`[onebot] deliver failed: ${e?.message}`);
+                        traceLog.error(`deliver failed: ${e?.message}`);
                     }
                 },
                 onError: async (err: any, info: any) => {
-                    api.logger?.error?.(`[onebot] ${info?.kind} reply failed: ${err}`);
+                    traceLog.error(`${info?.kind} reply failed: ${err}`);
                     await clearEmojiReaction();
                 },
             },
             replyOptions: { disableBlockStreaming: longMessageMode !== "normal" },
         });
+        traceLog.info(`dispatchReplyWithBufferedBlockDispatcher returned successfully.`);
     } catch (err: any) {
         await clearEmojiReaction();
         // 异常时清空缓冲，避免 finally 补发半截正文后再发错误消息
+        traceLog.error(`dispatch catch block: err=${err?.message}, receivedFinal=${receivedFinal}, chunkIndex=${chunkIndex}`);
         normalModeBufferedText = "";
         normalModeBufferedRawText = "";
-        api.logger?.error?.(`[onebot] dispatch failed: ${err?.message}`);
         try {
             const { userId: uid, groupId: gid, isGroup: ig } = (ctxPayload as any)._onebot || {};
             if (ig && gid) await sendGroupMsg(gid, `处理失败: ${err?.message?.slice(0, 80) || "未知错误"}`);
             else if (uid) await sendPrivateMsg(uid, `处理失败: ${err?.message?.slice(0, 80) || "未知错误"}`);
         } catch (_) { }
     } finally {
+        traceLog.info(`dispatch finally block: receivedFinal=${receivedFinal}, hasBuffered=${hasBufferedNormalModeText()}, bufferLen=${normalModeBufferedText.length}, hasTimer=${!!normalModeFlushTimer}, chunks=${deliveredChunks.length}`);
         // 补发缓冲池中残留的文本（引擎未发送 final 帧时会走到这里）
         if (hasBufferedNormalModeText()) {
             try {
@@ -722,10 +743,10 @@ export async function processInboundMessage(api: any, msg: OneBotMessage): Promi
                 queueNormalModeFlush(() => flushBufferedNormalModeText(effectiveIsGroup, effectiveGroupId, uid));
                 await normalModeFlushChain;
             } catch (e: any) {
-                api.logger?.error?.(`[onebot] finally flush failed: ${e?.message ?? e}`);
+                traceLog.error(`finally flush failed: ${e?.message ?? e}`);
             }
         }
-        clearNormalModeFlushTimer();
+        clearNormalModeFlushTimer("finally");
         setForwardSuppressDelivery(false);
         setActiveReplySelfId(null);
         lastSentChunkCountBySession.delete(replySessionId);
