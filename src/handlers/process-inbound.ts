@@ -34,6 +34,8 @@ import {
     sendPrivateForwardMsg,
     setMsgEmojiLike,
     getMsg,
+    getStrangerInfo,
+    getGroupMemberInfo,
 } from "../connection.js";
 import { setActiveReplyTarget, clearActiveReplyTarget, setActiveReplySessionId, setForwardSuppressDelivery, setActiveReplySelfId } from "../reply-context.js";
 import { loadPluginSdk, getSdk } from "../sdk.js";
@@ -90,6 +92,50 @@ let forwardCleanupTimer: ReturnType<typeof setInterval> | null = null;
 export function startForwardCleanupTimer(): void {
     if (forwardCleanupTimer) return;
     forwardCleanupTimer = setInterval(cleanupForwardPendingSessions, FORWARD_CLEANUP_INTERVAL_MS);
+}
+
+const nicknameCache = new Map<string, { nickname: string; ts: number }>();
+const NICKNAME_CACHE_TTL_MS = 5 * 60 * 1000; // 5 分钟
+
+/**
+ * 解析发送者展示名称。
+ * 优先使用消息体自带的群名片/昵称；若缺失，则通过 OneBot API 查询并缓存。
+ * 最终格式为 nickname(qq: userId)，确保 AI 上下文中同时包含昵称与 ID。
+ */
+async function resolveSenderNickname(
+    userId: number,
+    groupId: number | undefined,
+    isGroup: boolean,
+    senderFromMsg?: { nickname?: string; card?: string }
+): Promise<string> {
+    const card = senderFromMsg?.card?.trim();
+    const nickname = senderFromMsg?.nickname?.trim();
+    const base = card || nickname || "";
+    if (base) {
+        return `${base}(qq: ${userId})`;
+    }
+
+    const cacheKey = isGroup && groupId ? `group:${groupId}:${userId}` : `user:${userId}`;
+    const cached = nicknameCache.get(cacheKey);
+    if (cached && Date.now() - cached.ts < NICKNAME_CACHE_TTL_MS) {
+        return `${cached.nickname}(qq: ${userId})`;
+    }
+
+    let resolved = "";
+    if (isGroup && groupId) {
+        const info = await getGroupMemberInfo(groupId, userId);
+        resolved = info?.card?.trim() || info?.nickname?.trim() || "";
+    } else {
+        const info = await getStrangerInfo(userId);
+        resolved = info?.nickname?.trim() || "";
+    }
+
+    if (resolved) {
+        nicknameCache.set(cacheKey, { nickname: resolved, ts: Date.now() });
+        return `${resolved}(qq: ${userId})`;
+    }
+
+    return String(userId);
 }
 
 export async function processInboundMessage(api: any, msg: OneBotMessage): Promise<void> {
@@ -227,11 +273,7 @@ export async function processInboundMessage(api: any, msg: OneBotMessage): Promi
 
     const envelopeOptions = runtime.channel.reply?.resolveEnvelopeFormatOptions?.(cfg) ?? {};
     const chatType = isGroup ? "group" : "direct";
-    // 优先使用群名片(card)，其次是昵称(nickname)，都没有则为空串
-    const senderNickname = (isGroup ? msg.sender?.card?.trim() : undefined)
-        || msg.sender?.nickname?.trim()
-        || "";
-    const fromLabel = senderNickname || String(userId);
+    const fromLabel = await resolveSenderNickname(Number(userId), groupId, isGroup, msg.sender);
 
     // 添加日志：打印插件接收到的原始消息内容
     api.logger?.info?.(`[onebot] received message from user ${userId}: "${messageText}"`);
