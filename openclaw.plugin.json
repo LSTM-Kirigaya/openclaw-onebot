@@ -4,21 +4,183 @@
   "version": "1.0.5",
   "description": "OneBot v11 protocol channel (QQ/Lagrange.Core via WebSocket)",
   "author": "Lagrange.Onebot",
-  "channels": ["onebot"],
-  "commands": ["onebot"],
+  "channels": [
+    "onebot"
+  ],
+  "commands": [
+    "onebot"
+  ],
+  "channelConfigs": {
+    "onebot": {
+      "supportsAccounts": false,
+      "label": "OneBot",
+      "schema": {
+        "type": "object",
+        "properties": {
+          "enabled": {
+            "type": "boolean"
+          },
+          "name": {
+            "type": "string"
+          },
+          "type": {
+            "type": "string",
+            "enum": [
+              "forward-websocket",
+              "backward-websocket"
+            ]
+          },
+          "host": {
+            "type": "string"
+          },
+          "port": {
+            "type": "number"
+          },
+          "accessToken": {
+            "type": "string"
+          },
+          "path": {
+            "type": "string"
+          },
+          "requireMention": {
+            "type": "boolean"
+          },
+          "whitelistUserIds": {
+            "type": "array",
+            "items": {
+              "type": "number"
+            }
+          },
+          "blacklistUserIds": {
+            "type": "array",
+            "items": {
+              "type": "number"
+            }
+          },
+          "renderMarkdownToPlain": {
+            "type": "boolean"
+          },
+          "normalModeFlushIntervalMs": {
+            "type": "number"
+          },
+          "normalModeFlushChars": {
+            "type": "number"
+          },
+          "thinkingEmojiId": {
+            "type": "number"
+          },
+          "onReplySessionEnd": {
+            "type": "string"
+          },
+          "longMessageMode": {
+            "type": "string",
+            "enum": [
+              "normal",
+              "og_image",
+              "forward"
+            ]
+          },
+          "longMessageThreshold": {
+            "type": "number"
+          },
+          "ogImageRenderTheme": {
+            "type": "string",
+            "enum": [
+              "default",
+              "dust",
+              "custom"
+            ]
+          },
+          "ogImageRenderThemePath": {
+            "type": "string"
+          },
+          "groupIncrease": {
+            "type": "object",
+            "properties": {
+              "enabled": {
+                "type": "boolean"
+              },
+              "message": {
+                "type": "string"
+              },
+              "command": {
+                "type": "string"
+              },
+              "cwd": {
+                "type": "string"
+              }
+            },
+            "additionalProperties": false
+          },
+          "cronJobs": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": [
+                "name",
+                "cron",
+                "script",
+                "groupIds"
+              ],
+              "properties": {
+                "name": {
+                  "type": "string"
+                },
+                "cron": {
+                  "type": "string"
+                },
+                "timezone": {
+                  "type": "string"
+                },
+                "script": {
+                  "type": "string"
+                },
+                "groupIds": {
+                  "type": "array",
+                  "items": {
+                    "type": "number"
+                  }
+                }
+              },
+              "additionalProperties": false
+            }
+          }
+        },
+        "additionalProperties": false
+      },
+      "commands": {
+        "nativeCommandsAutoEnabled": false
+      }
+    }
+  },
   "configSchema": {
     "type": "object",
     "additionalProperties": false,
     "properties": {
       "type": {
         "type": "string",
-        "enum": ["forward-websocket", "backward-websocket"],
+        "enum": [
+          "forward-websocket",
+          "backward-websocket"
+        ],
         "description": "连接类型：正向或反向 WebSocket"
       },
-      "host": { "type": "string", "description": "OneBot 主机地址" },
-      "port": { "type": "number", "description": "OneBot 端口" },
-      "accessToken": { "type": "string", "description": "访问令牌（可选）" },
-      "path": { "type": "string", "description": "WS 路径，默认 /onebot/v11/ws" },
+      "host": {
+        "type": "string",
+        "description": "OneBot 主机地址"
+      },
+      "port": {
+        "type": "number",
+        "description": "OneBot 端口"
+      },
+      "accessToken": {
+        "type": "string",
+        "description": "访问令牌（可选）"
+      },
+      "path": {
+        "type": "string",
+        "description": "WS 路径，默认 /onebot/v11/ws"
+      },
       "requireMention": {
         "type": "boolean",
         "default": true,
@@ -26,12 +188,16 @@
       },
       "whitelistUserIds": {
         "type": "array",
-        "items": { "type": "number" },
+        "items": {
+          "type": "number"
+        },
         "description": "白名单 QQ 号，非空时仅白名单内用户可触发 AI；为空则所有人可回复"
       },
       "blacklistUserIds": {
         "type": "array",
-        "items": { "type": "number" },
+        "items": {
+          "type": "number"
+        },
         "description": "黑名单 QQ 号，在黑名单内的用户无法触发 AI（优先级低于白名单）"
       },
       "renderMarkdownToPlain": {
@@ -52,7 +218,10 @@
       "groupIncrease": {
         "type": "object",
         "properties": {
-          "enabled": { "type": "boolean", "default": false },
+          "enabled": {
+            "type": "boolean",
+            "default": false
+          },
           "message": {
             "type": "string",
             "description": "欢迎语模板。占位符：{name} 新成员昵称，{userId} QQ号，{groupName} 群名，{groupId} 群号，{avatarUrl} 头像链接"
@@ -78,7 +247,11 @@
       },
       "longMessageMode": {
         "type": "string",
-        "enum": ["normal", "og_image", "forward"],
+        "enum": [
+          "normal",
+          "og_image",
+          "forward"
+        ],
         "default": "normal",
         "description": "长消息处理模式：normal 正常发送；og_image 生成图片（需 satori 和 sharp）；forward 合并转发"
       },
@@ -89,7 +262,11 @@
       },
       "ogImageRenderTheme": {
         "type": "string",
-        "enum": ["default", "dust", "custom"],
+        "enum": [
+          "default",
+          "dust",
+          "custom"
+        ],
         "default": "default",
         "description": "长消息 og_image 时的渲染主题：default 无额外样式，dust 内置 dust 样式，custom 时需填写 ogImageRenderThemePath"
       },
@@ -102,15 +279,35 @@
         "description": "内置定时任务（无 AI 介入，直接执行脚本并推送到群聊）",
         "items": {
           "type": "object",
-          "required": ["name", "cron", "script", "groupIds"],
+          "required": [
+            "name",
+            "cron",
+            "script",
+            "groupIds"
+          ],
           "properties": {
-            "name": { "type": "string", "description": "任务名称" },
-            "cron": { "type": "string", "description": "cron 表达式，如 0 8 * * * 表示每天 8:00" },
-            "timezone": { "type": "string", "default": "Asia/Shanghai", "description": "时区" },
-            "script": { "type": "string", "description": "脚本路径，相对 process.cwd()，如 ./Tiphareth/src/openclaw/cron/daily-news.ts" },
+            "name": {
+              "type": "string",
+              "description": "任务名称"
+            },
+            "cron": {
+              "type": "string",
+              "description": "cron 表达式，如 0 8 * * * 表示每天 8:00"
+            },
+            "timezone": {
+              "type": "string",
+              "default": "Asia/Shanghai",
+              "description": "时区"
+            },
+            "script": {
+              "type": "string",
+              "description": "脚本路径，相对 process.cwd()，如 ./Tiphareth/src/openclaw/cron/daily-news.ts"
+            },
             "groupIds": {
               "type": "array",
-              "items": { "type": "number" },
+              "items": {
+                "type": "number"
+              },
               "description": "要推送的群号列表"
             }
           }
@@ -119,14 +316,69 @@
     }
   },
   "uiHints": {
-    "accessToken": { "label": "Access Token", "sensitive": true },
-    "host": { "label": "主机地址", "placeholder": "127.0.0.1" },
-    "port": { "label": "端口", "placeholder": "8080" },
-    "requireMention": { "label": "群聊需 @ 回复" },
-    "renderMarkdownToPlain": { "label": "Markdown 转纯文本" },
-    "normalModeFlushIntervalMs": { "label": "normal 聚合窗口(ms)" },
-    "normalModeFlushChars": { "label": "normal 提前发送阈值" },
-    "ogImageRenderTheme": { "label": "OG 图片渲染主题（default/dust/custom）" },
-    "ogImageRenderThemePath": { "label": "自定义 CSS 路径（仅当主题为 custom 时）" }
+    "enabled": {
+      "label": "启用 OneBot"
+    },
+    "accessToken": {
+      "label": "Access Token",
+      "sensitive": true
+    },
+    "host": {
+      "label": "主机地址",
+      "placeholder": "127.0.0.1"
+    },
+    "port": {
+      "label": "端口",
+      "placeholder": "3001"
+    },
+    "path": {
+      "label": "WS 路径",
+      "placeholder": "/onebot/v11/ws"
+    },
+    "requireMention": {
+      "label": "群聊需 @ 回复"
+    },
+    "whitelistUserIds": {
+      "label": "用户白名单 (QQ号)"
+    },
+    "blacklistUserIds": {
+      "label": "用户黑名单 (QQ号)"
+    },
+    "renderMarkdownToPlain": {
+      "label": "Markdown 转纯文本"
+    },
+    "normalModeFlushIntervalMs": {
+      "label": "normal 聚合窗口(ms)"
+    },
+    "normalModeFlushChars": {
+      "label": "normal 提前发送阈值"
+    },
+    "thinkingEmojiId": {
+      "label": "思考中表情 ID"
+    },
+    "longMessageMode": {
+      "label": "长消息处理模式"
+    },
+    "longMessageThreshold": {
+      "label": "长消息阈值(字符)"
+    },
+    "ogImageRenderTheme": {
+      "label": "OG 图片渲染主题"
+    },
+    "ogImageRenderThemePath": {
+      "label": "自定义 CSS 路径"
+    },
+    "groupIncrease.enabled": {
+      "label": "新成员欢迎"
+    },
+    "groupIncrease.message": {
+      "label": "欢迎语模板"
+    },
+    "onReplySessionEnd": {
+      "label": "回复结束钩子脚本"
+    },
+    "cronJobs": {
+      "label": "内置定时任务"
+    }
   }
 }
